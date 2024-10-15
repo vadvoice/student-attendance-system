@@ -1,2 +1,2 @@
 export * from './disciplines.api';
-export * from './attendance-history.api';
+export * from './class-log.api';
