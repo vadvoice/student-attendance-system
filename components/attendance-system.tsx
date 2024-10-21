@@ -20,15 +20,22 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { PlusCircle, QrCode, History, Users, CalendarIcon } from 'lucide-react';
+import { PlusCircle, QrCode, History, Users, CalendarIcon, X, Trash } from 'lucide-react';
 import { format, isSameDay } from 'date-fns';
 import { Checker } from './checker/steps';
 
 import { useQuery, useMutation } from '@tanstack/react-query';
 
 import { attendanceHistoryApi, disciplinesApi } from '@/lib/api';
+import { Filters, HistoryRecord } from '@/types/HistoryRecord';
+import { Alert } from './ui/alert';
 
 export function AttendanceSystem() {
+  const [activeView, setActiveView] = useState('disciplines');
+  const [newDiscipline, setNewDiscipline] = useState('');
+  const [historyFilter, setHistoryFilter] = useState('');
+  const [date, setDate] = useState<Date>();
+
   // Queries
   const {
     data: disciplines = [],
@@ -43,24 +50,24 @@ export function AttendanceSystem() {
   const {
     data: historyRecords = [],
     error: historyRecordsError,
+    refetch: historyRecordsRefetch,
     isLoading: historyRecordsIsLoading,
-  } = useQuery({
-    queryKey: ['historyRecords'],
-    queryFn: attendanceHistoryApi.list,
+  } = useQuery<HistoryRecord[]>({
+    queryKey: ['historyRecords', { historyFilter, date }],
+    queryFn: () => {
+      if (!historyFilter && !date) {
+        return attendanceHistoryApi.list();
+      }
+      let filters: Filters = {};
+      if (historyFilter) filters.historyFilter = historyFilter;
+      if (date) filters.date = date;
+      return attendanceHistoryApi.list(filters);
+    },
   });
 
-  const mutation = useMutation({
+  const { mutate: createHistoryRecord, data: historyRecord, isPending } = useMutation({
     mutationFn: attendanceHistoryApi.create,
-    // onSuccess: () => {
-    //   // Invalidate and refetch
-    //   queryClient.invalidateQueries({ queryKey: ['todos'] })
-    // },
   });
-
-  const [activeView, setActiveView] = useState('disciplines');
-  const [newDiscipline, setNewDiscipline] = useState('');
-  const [historyFilter, setHistoryFilter] = useState('');
-  const [date, setDate] = useState<Date>();
 
   const handleAddDiscipline = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -91,15 +98,30 @@ export function AttendanceSystem() {
       });
   };
 
-  const handleAddHistoryRecord = (disciplineId: number) => {
+  const handleAddHistoryRecord = async (disciplineId: number) => {
     const discipline = disciplines.find((d) => d.id === disciplineId);
     if (!discipline) return;
 
-    mutation.mutate({
+    createHistoryRecord({
       discipline_id: discipline.id,
       name: discipline.name,
     });
   };
+
+  const handleDeleteHistoryRecord = (id: number) => {
+    if (!confirm('Are you sure you want to delete this record?')) return;
+
+    fetch(`/api/attendance-history/${id}`, {
+      method: 'DELETE',
+    })
+      .then((res) => res.json())
+      .then(() => historyRecordsRefetch());
+  };
+
+  // trigger refetch when filters change
+  useEffect(() => {
+    historyRecordsRefetch();
+  }, [historyFilter, date]);
 
   const renderContent = () => {
     switch (activeView) {
@@ -158,7 +180,7 @@ export function AttendanceSystem() {
           </Card>
         );
       case 'checker':
-        return <Checker disciplines={disciplines} actions={{ handleAddHistoryRecord }} />;
+        return <Checker data={{ disciplines, historyRecord, isLoading: isPending }} actions={{ handleAddHistoryRecord }} />;
       case 'history':
         return (
           <Card className="w-full">
@@ -185,7 +207,7 @@ export function AttendanceSystem() {
                   </select>
                 </div>
                 <div>
-                  <Label>Select Date</Label>
+                  <Label>Date start from</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -193,7 +215,8 @@ export function AttendanceSystem() {
                         className={`w-full justify-start text-left font-normal ${!date && 'text-muted-foreground'}`}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {date ? format(date, 'PPP') : 'Pick a date'}
+                        <p className='flex-1'>{date ? format(date, 'PPP') : 'Pick a date'}</p>
+                        {date && <X className="ml-2 h-4 w-4 opacity-50" onClick={(e) => { e.stopPropagation(); setDate(undefined) }} />}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
@@ -218,22 +241,30 @@ export function AttendanceSystem() {
                     </PopoverContent>
                   </Popover>
                 </div>
-                <ScrollArea className="h-[200px]">
+                <ScrollArea className="h-[300px]">
                   <ul className="space-y-2">
                     {historyRecordsIsLoading ? <Spinner /> : null}
-                    {historyRecords.map((record, index) => (
-                      <li
+                    {!historyRecords.length && !historyRecordsIsLoading ? <Alert>No records found</Alert> : null}
+                    {historyRecords.map((record, index) => {
+                      const createdAt = new Date(record.created_at);
+                      return <li
                         key={index}
                         className="p-3 rounded-md shadow-sm flex justify-between items-center"
                       >
-                        <span>
-                          {record.name} -{record.created_at}
+                        <span className="flex-1">
+                          {record.name} - ({format(createdAt, 'PPP')})
                         </span>
-                        <span className="text-sm text-gray-500">
-                          25 students
+                        <span className="text-sm text-gray-500 bg-gray-100 rounded-md px-2 py-1">
+                          {record.students_participated} students
                         </span>
+
+                        <div className="actions">
+                          <Button variant="ghost" onClick={() => handleDeleteHistoryRecord(record.id)}>
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </li>
-                    ))}
+                    })}
                   </ul>
                 </ScrollArea>
               </div>
@@ -247,7 +278,7 @@ export function AttendanceSystem() {
 
   return (
     <div className="flex flex-col flex-1">
-      <div className="w-full py-6 px-4 sm:px-6 lg:px-8 flex-1">
+      <div className="w-full py-6 px-4 sm:px-6 lg:px-8 flex-1 flex flex-col">
         {renderContent()}
       </div>
 

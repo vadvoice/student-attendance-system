@@ -11,22 +11,10 @@ import {
 import { Label } from '@/components/ui/label';
 import { QrCode, Share2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { HistoryRecord } from '@/types/HistoryRecord';
+import { Spinner } from '../spinner';
+import RecordsHistory from '../records-history';
 import QRCode from 'react-qr-code';
-
-// const STEPS = [
-//   {
-//     title: 'Select Discipline',
-//     description: 'Select the discipline you want to check attendance for.',
-//   },
-//   {
-//     title: 'Generate QR Code',
-//     description: 'Generate a QR code for the selected discipline.',
-//   },
-//   {
-//     title: 'Start Timer',
-//     description: 'Start the timer to check attendance.',
-//   },
-// ];
 
 const Countdown = ({ seconds }: { seconds: number }) => {
   const [countdown, setCountdown] = useState(seconds);
@@ -50,10 +38,18 @@ const Countdown = ({ seconds }: { seconds: number }) => {
 };
 
 export const Checker = ({
-  disciplines,
+  data: {
+    disciplines,
+    historyRecord,
+    isLoading,
+  },
   actions: { handleAddHistoryRecord },
 }: {
-  disciplines: Discipline[];
+  data: {
+    disciplines: Discipline[];
+    historyRecord: HistoryRecord;
+    isLoading: boolean;
+  },
   actions: {
     handleAddHistoryRecord: (name: number) => void;
   };
@@ -62,7 +58,10 @@ export const Checker = ({
   const [selectedDiscipline, setSelectedDiscipline] = useState('');
   const [showQRCode, setShowQRCode] = useState(false);
   const getLink = (discipline: string) => {
-    return `${process.env.NEXT_PUBLIC_BASE_URL}/checker/${discipline}`;
+    if (!historyRecord) {
+      return '';
+    }
+    return `${window.origin}/share?descipline=${discipline}&id=${historyRecord.id}`;
   };
 
   const handleCreateQRCode = () => {
@@ -70,7 +69,12 @@ export const Checker = ({
   };
 
   const handleShareLink = () => {
-    navigator.clipboard.writeText(getLink(selectedDiscipline));
+    const link = getLink(selectedDiscipline);
+    if (link) {
+      navigator.clipboard.writeText(link);
+    } else {
+      console.warn('Unable to generate link');
+    }
   };
 
   const handleNextStep = () => {
@@ -121,7 +125,7 @@ export const Checker = ({
       case 3:
         return (
           <div className="mt-4 flex flex-col items-center gap-3">
-            <QRCode value={getLink(selectedDiscipline)} />
+            {historyRecord && selectedDiscipline ? <QRCode className="border border-gray-200" value={getLink(selectedDiscipline)} /> : null}
 
             <Countdown seconds={1000} />
             <div className="flex gap-2">
@@ -148,55 +152,29 @@ export const Checker = ({
     }
   }, [selectedDiscipline, showQRCode]);
 
+
+  if (isLoading) {
+    return <Spinner />
+  }
+
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Attendance Checker</CardTitle>
-        <CardDescription>Create a QR code for attendance.</CardDescription>
-      </CardHeader>
+    <Card className="w-full flex-1 flex flex-col justify-between">
+      <div className="flex flex-col gap-4">
 
-      <CardContent>
-        <div className="space-y-4">
-          {/* <div>
-            <Label htmlFor="discipline">Select Discipline (Optional)</Label>
-            <select
-              id="discipline"
-              value={selectedDiscipline}
-              onChange={(e) => {
-                setSelectedDiscipline(e.target.value);
-                setShowQRCode(false);
-              }}
-              className="w-full mt-1 rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 p-2"
-            >
-              <option value="">Temporary (No Discipline)</option>
-              {disciplines.map((discipline) => (
-                <option key={discipline.id} value={discipline.id}>
-                  {discipline.name}
-                </option>
-              ))}
-            </select>
+        <CardHeader>
+          <CardTitle>Attendance Checker</CardTitle>
+          <CardDescription>Create a QR code for attendance.</CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <div className="space-y-4">
+            {renderContent()}
           </div>
-          {selectedDiscipline ? (
-            <div className="flex flex-col gap-2">
-              <Button onClick={handleCreateQRCode} className="w-full">
-                <QrCode className="h-4 w-4 mr-2" />
-                Generate QR Code
-              </Button>
-              <Button onClick={handleShareLink} className="w-full">
-                <Share2 className="h-4 w-4 mr-2" />
-                Share Link
-              </Button>
-            </div>
-          ) : null}
+        </CardContent>
+      </div>
+      <hr className="my-4" />
 
-          {showQRCode && (
-            <div className="mt-4 flex flex-col items-center">
-              <QRCode value={getLink(selectedDiscipline)} />
-            </div>
-          )} */}
-          {renderContent()}
-        </div>
-      </CardContent>
+      <RecordsHistory />
     </Card>
   );
 };

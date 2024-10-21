@@ -1,5 +1,5 @@
 import { createClient } from '@/utils/supabase/server';
-import { deleteDiscipline } from '@/utils/supabase/queries/desciplines';
+import { deleteDiscipline } from '@/utils/supabase/queries/desciplines.query';
 import { NextRequest, NextResponse } from 'next/server';
 
 export async function DELETE(
