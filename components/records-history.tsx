@@ -4,7 +4,7 @@ import { Spinner } from './spinner';
 import { Alert } from './ui/alert';
 import { HistoryRecord } from '@/types/HistoryRecord';
 import { Button } from './ui/button';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/lib/utils';
 
@@ -23,7 +23,7 @@ const HistoryRecordItem = ({ record }: { record: HistoryRecord }) => {
     </div>
 
     <Button variant="outline" size="icon" onClick={() => setIsOpen(!isOpen)}>
-      <ChevronDown />
+      {isOpen ? <ChevronUp /> : <ChevronDown />}
     </Button>
   </div>;
 };
