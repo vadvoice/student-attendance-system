@@ -278,7 +278,7 @@ export function AttendanceSystem() {
 
   return (
     <div className="flex flex-col flex-1">
-      <div className="w-full py-6 px-4 sm:px-6 lg:px-8 flex-1">
+      <div className="w-full py-6 px-4 sm:px-6 lg:px-8 flex-1 flex flex-col">
         {renderContent()}
       </div>
 

@@ -13,7 +13,7 @@ import { QrCode, Share2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { HistoryRecord } from '@/types/HistoryRecord';
 import { Spinner } from '../spinner';
-
+import RecordsHistory from '../records-history';
 import QRCode from 'react-qr-code';
 
 const Countdown = ({ seconds }: { seconds: number }) => {
@@ -158,17 +158,23 @@ export const Checker = ({
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Attendance Checker</CardTitle>
-        <CardDescription>Create a QR code for attendance.</CardDescription>
-      </CardHeader>
+    <Card className="w-full flex-1 flex flex-col justify-between">
+      <div className="flex flex-col gap-4">
 
-      <CardContent>
-        <div className="space-y-4">
-          {renderContent()}
-        </div>
-      </CardContent>
+        <CardHeader>
+          <CardTitle>Attendance Checker</CardTitle>
+          <CardDescription>Create a QR code for attendance.</CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <div className="space-y-4">
+            {renderContent()}
+          </div>
+        </CardContent>
+      </div>
+      <hr className="my-4" />
+
+      <RecordsHistory />
     </Card>
   );
 };
